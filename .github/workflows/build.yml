@@ -1,0 +1,49 @@
+name: Build & Push Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'fixlocal-app/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build & Push
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image tag
+        id: meta
+        run: echo "tag=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Build & push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: fixlocal-app/frontend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/frontend:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ github.repository }}/frontend:latest
+
+      - name: Build & push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: fixlocal-app/backend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/backend:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ github.repository }}/backend:latest

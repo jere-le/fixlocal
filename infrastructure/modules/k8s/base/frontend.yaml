@@ -14,9 +14,11 @@ spec:
       labels:
         app: frontend
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: frontend
-          image: ghcr.io/fixlocal/frontend:latest
+          image: ghcr.io/jere-le/fixlocal/frontend:latest
           ports:
             - containerPort: 3000
           env:

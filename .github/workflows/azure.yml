@@ -12,6 +12,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  packages: read
 
 jobs:
   terraform:
@@ -72,6 +73,13 @@ jobs:
             --resource-group fixlocal-prod-swe-rg \
             --name fixlocal-prod-swe-aks \
             --overwrite-existing
+
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
           kubectl apply -k infrastructure/modules/k8s/overlays/azure
 
       - name: Deploy to secondary (North Europe)
@@ -80,4 +88,11 @@ jobs:
             --resource-group fixlocal-prod-ne-rg \
             --name fixlocal-prod-ne-aks \
             --overwrite-existing
+
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
           kubectl apply -k infrastructure/modules/k8s/overlays/azure
