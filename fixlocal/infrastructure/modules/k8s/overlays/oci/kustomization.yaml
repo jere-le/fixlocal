@@ -1,0 +1,14 @@
+# OCI overlay — Chapter 3
+#
+# What changes from Azure:
+#   - LoadBalancer annotation: service.beta.kubernetes.io/oci-load-balancer-shape
+#   - Storage class names differ (oci-bv vs azure-disk)
+#   - Workload Identity setup is different (OCI uses instance principals)
+#   - Postgres FQDN format and SSL requirements differ
+#
+# This file will be populated in the OCI chapter.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base

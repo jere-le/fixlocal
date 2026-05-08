@@ -1,0 +1,11 @@
+# Azure-specific patch for the frontend LoadBalancer service.
+# This is what changes between clouds — the base manifest is identical.
+#
+# Azure requires these annotations to provision an Azure Load Balancer.
+# OCI, AWS, GCP each have their own equivalents (see overlays/).
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-resource-group: "fixlocal-prod-swe-rg"
