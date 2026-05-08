@@ -7,10 +7,13 @@ resource "azurerm_postgresql_flexible_server" "this" {
   administrator_password = var.admin_password
   sku_name               = var.sku_name
   storage_mb             = 32768
-  zone                   = "1"
   tags                   = var.tags
 
   public_network_access_enabled = false
+
+  lifecycle {
+    ignore_changes = [zone]
+  }
 }
 
 resource "azurerm_postgresql_flexible_server_database" "fixlocal" {
