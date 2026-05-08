@@ -13,9 +13,11 @@ terraform {
     storage_account_name = "fixlocaltfstate"
     container_name       = "tfstate"
     key                  = "azure.terraform.tfstate"
+    use_oidc             = true
   }
 }
 
 provider "azurerm" {
   features {}
+  use_oidc = true
 }
