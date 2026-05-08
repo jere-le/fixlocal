@@ -1,0 +1,78 @@
+name: Deploy — Azure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/azure/**'
+      - 'infrastructure/modules/k8s/**'
+      - 'fixlocal-app/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: infrastructure/azure
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.0"
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - run: terraform init
+      - run: terraform validate
+      - run: terraform plan -out=tfplan
+        env:
+          TF_VAR_postgres_admin_password: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+      - run: terraform apply -auto-approve tfplan
+        env:
+          TF_VAR_postgres_admin_password: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: terraform
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to primary (Sweden Central)
+        run: |
+          az aks get-credentials \
+            --resource-group fixlocal-prod-swe-rg \
+            --name fixlocal-prod-swe-aks \
+            --overwrite-existing
+          kubectl apply -k infrastructure/modules/k8s/overlays/azure
+
+      - name: Deploy to secondary (North Europe)
+        run: |
+          az aks get-credentials \
+            --resource-group fixlocal-prod-ne-rg \
+            --name fixlocal-prod-ne-aks \
+            --overwrite-existing
+          kubectl apply -k infrastructure/modules/k8s/overlays/azure

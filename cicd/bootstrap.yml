@@ -1,0 +1,46 @@
+name: Bootstrap — Azure tfstate backend
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  bootstrap:
+    name: Create tfstate backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create resource group
+        run: |
+          az group create \
+            --name fixlocal-tfstate-rg \
+            --location swedencentral
+
+      - name: Create storage account
+        run: |
+          az storage account create \
+            --name fixlocaltfstate \
+            --resource-group fixlocal-tfstate-rg \
+            --location swedencentral \
+            --sku Standard_LRS \
+            --allow-blob-public-access false
+
+      - name: Create container
+        run: |
+          az storage container create \
+            --name tfstate \
+            --account-name fixlocaltfstate \
+            --auth-mode login
+
+      - name: Done
+        run: echo "tfstate backend ready"
