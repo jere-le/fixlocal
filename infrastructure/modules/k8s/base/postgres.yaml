@@ -1,0 +1,132 @@
+# Containerized Postgres — deliberate portability choice for the baseline.
+# Storage is the only cloud-specific part (storageClassName below); everything
+# else is identical across clouds, which is the whole point of Chapter 2.
+#
+# postgres-secret is NOT defined here. It's created by the CI pipeline at
+# deploy time (see .github/workflows/azure.yml) the same way ghcr-secret is —
+# nothing with real credentials gets committed to the repo.
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+              subPath: pgdata # avoids "lost+found" issue on fresh volumes
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      volumes:
+        - name: init-sql
+          configMap:
+            name: postgres-init-sql
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # NOTE: cloud-specific. Confirm this matches your cluster's default
+        # StorageClass (`kubectl get storageclass`). On AKS this is typically
+        # "managed-csi". OCI and AWS overlays will need their own value here
+        # via a patch — same pattern as the frontend LoadBalancer annotation.
+        storageClassName: managed-csi
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  clusterIP: None # headless, StatefulSet needs stable network identity
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# Schema + seed data, kept in sync manually with fixlocal-app/backend/init.sql.
+# If you change one, change both — this is a known duplication, not an oversight.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-sql
+data:
+  init.sql: |
+    CREATE TABLE IF NOT EXISTS bookings (
+        id          SERIAL PRIMARY KEY,
+        technician  VARCHAR(50) NOT NULL,
+        date        DATE NOT NULL,
+        description TEXT NOT NULL,
+        device      VARCHAR(100) NOT NULL,
+        created_at  TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS inventory (
+        id         SERIAL PRIMARY KEY,
+        part_name  VARCHAR(100) NOT NULL,
+        quantity   INT NOT NULL DEFAULT 0,
+        updated_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS orders (
+        id         SERIAL PRIMARY KEY,
+        part_name  VARCHAR(100) NOT NULL,
+        quantity   INT NOT NULL,
+        status     VARCHAR(50) NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    -- Seed data
+    INSERT INTO bookings (technician, date, description, device) VALUES
+        ('jan',  '2026-05-07', 'Replace battery', 'iPhone 13'),
+        ('jan',  '2026-05-07', 'Fix screen', 'Samsung Galaxy S24'),
+        ('jill', '2026-05-07', 'Water damage repair', 'iPhone 14 Pro'),
+        ('jill', '2026-05-08', 'Replace charging port', 'Google Pixel 8');
+
+    INSERT INTO inventory (part_name, quantity) VALUES
+        ('iPhone 13 Battery', 5),
+        ('Samsung Galaxy S24 Screen', 2),
+        ('iPhone 14 Pro Screen', 3),
+        ('USB-C Charging Port', 8),
+        ('iPhone 13 Screen', 1);

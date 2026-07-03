@@ -4,4 +4,4 @@ kind: Kustomization
 resources:
   - frontend.yaml
   - backend.yaml
-  - postgres-secret.yaml
+  - postgres.yaml

@@ -29,18 +29,3 @@ variable "node_vm_size" {
   type    = string
   default = "Standard_B2s"
 }
-
-variable "postgres_sku" {
-  type    = string
-  default = "B_Standard_B1ms"
-}
-
-variable "postgres_admin_user" {
-  type    = string
-  default = "fixlocaladmin"
-}
-
-variable "postgres_admin_password" {
-  type      = string
-  sensitive = true
-}

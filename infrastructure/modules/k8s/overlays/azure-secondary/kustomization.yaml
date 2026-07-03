@@ -1,0 +1,13 @@
+# Secondary — North Europe
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - path: frontend-service-patch.yaml
+    target:
+      kind: Service
+      name: frontend

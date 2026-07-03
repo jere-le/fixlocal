@@ -43,27 +43,3 @@ module "aks_secondary" {
   node_vm_size        = var.node_vm_size
   tags                = local.common_tags
 }
-
-# ── Postgres ─────────────────────────────────────────────────────────────────
-
-module "postgres_primary" {
-  source              = "./modules/postgres"
-  prefix              = local.primary_prefix
-  resource_group_name = azurerm_resource_group.primary.name
-  location            = var.primary_location
-  sku_name            = var.postgres_sku
-  admin_user          = var.postgres_admin_user
-  admin_password      = var.postgres_admin_password
-  tags                = local.common_tags
-}
-
-module "postgres_secondary" {
-  source              = "./modules/postgres"
-  prefix              = local.secondary_prefix
-  resource_group_name = azurerm_resource_group.secondary.name
-  location            = var.secondary_location
-  sku_name            = var.postgres_sku
-  admin_user          = var.postgres_admin_user
-  admin_password      = var.postgres_admin_password
-  tags                = local.common_tags
-}
