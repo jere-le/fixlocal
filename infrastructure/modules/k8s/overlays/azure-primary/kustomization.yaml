@@ -6,8 +6,3 @@ kind: Kustomization
 resources:
   - ../../base
 
-patches:
-  - path: frontend-service-patch.yaml
-    target:
-      kind: Service
-      name: frontend
